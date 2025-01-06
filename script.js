@@ -1,3 +1,5 @@
+import rough from 'roughjs';
+
 // Global vars for path management
 let userInput = [];
 let baseX = 0;
@@ -57,6 +59,12 @@ const greggsMapping = {
     f: {
         type: 'Q', xControl: 0, yControl: 15, x: -15, y: 60
     },
+    u: {
+        type: 'Q', xControl: 3, yControl: 10, x: 9, y: 0
+    },
+    o: {
+        type: 'Q', xControl: 3, yControl: -10, x: 9, y: 0
+    },
     n: {
         type: 'L', x: 30, y: 0
     },
@@ -81,7 +89,7 @@ const greggsMapping = {
     nk: {
         type: 'L', x: 60, y: 10
     },
-    i: {
+    e: {
         type: 'A', x: 0, y: -5
     },
     a: {
@@ -104,15 +112,12 @@ document.addEventListener("keydown", (event) => {
     const currentText = outputDiv.textContent;
     outputDiv.textContent = currentText.slice(0, currentText.length-1); // Remove the last character
     userInput.splice(-1);
-    updateSVG();
-    return;
   }
 
   // Handle space
   if (keyIdentifier === " ") {
     outputDiv.textContent += " ";
     userInput.push(' ');
-    return;
   }
 
   // Handle vowels with conditional cycling
@@ -148,10 +153,15 @@ document.addEventListener("keydown", (event) => {
     outputDiv.textContent += greggsChar;
   }
 
-  updateSVG();
+  handleIterations();
 });
 
-function updateSVG() {
+function handleIterations() {
+    updateSVGFirstIteration();
+    updateSVGSecondIteration();
+}
+
+function updateSVGSecondIteration() {
     console.log('User input: ' + userInput);
     let pathData = `M ${baseX} ${baseY}`; // Start the path
     let x = baseX, y = baseY; // Track the current position
@@ -185,5 +195,45 @@ function updateSVG() {
       }
     }
 
-    document.getElementById("greggsPath").setAttribute("d", pathData);
+    document.getElementById("greggsPathSecond").setAttribute("d", pathData);
+}
+
+
+
+
+function updateSVGFirstIteration() {
+    console.log('User input: ' + userInput);
+    let pathData = `M ${baseX} ${baseY}`; // Start the path
+    let x = baseX, y = baseY; // Track the current position
+    let furthestX = baseX;
+
+    for (const char of userInput) {
+      const mapping = greggsMapping[char];
+      if (char === ' '){
+        x = furthestX + 10;
+        y = baseY;
+        pathData += ` M ${x} ${y}`
+        continue
+      } else if (!mapping) continue; // Skip unsupported characters
+
+      if (mapping.type === 'Q') {
+        pathData += ` Q ${x + mapping.xControl} ${y + mapping.yControl} ${x + mapping.x} ${y + mapping.y}`;
+        x += mapping.x;
+        y += mapping.y;
+      } else if (mapping.type === 'L') {
+        pathData += ` L ${x + mapping.x} ${y + mapping.y}`;
+        x += mapping.x;
+        y += mapping.y;
+      } else if (mapping.type === 'A') {
+        pathData += ` A 1 1 0 0 0 ${x + mapping.x} ${y + mapping.y} A 1 1 0 0 0 ${x} ${y}`;
+        x += mapping.x;
+        y += mapping.y;
+      }
+
+      if (mapping.x > 0){
+        furthestX = x;
+      }
+    }
+
+    document.getElementById("greggsPathFirst").setAttribute("d", pathData);
 }
