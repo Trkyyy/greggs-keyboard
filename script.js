@@ -116,6 +116,9 @@ const greggsMapping = {
     nk: {
         type: 'L', x: 60, y: 10
     },
+    th: {
+        type: 'Q', xControl: 3, yControl: -12, x: 15, y: -15
+    },
     e: {
         type: 'A', x: 0, y: -5
     },
@@ -262,7 +265,7 @@ function updateSVGFirstIteration() {
       if (char === ' '){
         state.x = furthestX + 10;
         state.y = baseY;
-        state.pathData += ` M ${x} ${y}`
+        state.pathData += ` M ${state.x} ${state.y}`
         continue
       } else if (!mapping) continue; // Skip unsupported characters
 
