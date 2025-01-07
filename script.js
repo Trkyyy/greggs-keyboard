@@ -1,5 +1,3 @@
-import rough from 'roughjs';
-
 // Global vars for path management
 let userInput = [];
 let baseX = 0;
@@ -30,6 +28,11 @@ const mapping = {
   // Space
   " ": " "
 };
+
+const accents = {
+    dot: { move: { x: 3, y: 10 }, x: 0, y: -2},
+    dash: { move: { x: 1, y: 10 }, x: 7, y: -4}
+}
 
 const greggsMapping = {
     r: {
@@ -62,8 +65,32 @@ const greggsMapping = {
     u: {
         type: 'Q', xControl: 3, yControl: 10, x: 9, y: 0
     },
+    ú: {
+        type: 'X', character: {
+            type: 'Q', xControl: 3, yControl: 10, x: 9, y: 0
+        },
+        accent: 'dot'
+    },
+    ū: {
+        type: 'X', character: {
+            type: 'Q', xControl: 3, yControl: 10, x: 9, y: 0
+        },
+        accent: 'dash'
+    },
     o: {
         type: 'Q', xControl: 3, yControl: -10, x: 9, y: 0
+    },
+    ó: {
+        type: 'X', character: {
+            type: 'Q', xControl: 3, yControl: -10, x: 9, y: 0
+        },
+        accent: 'dot'
+    },
+    ō: {
+        type: 'X', character: {
+            type: 'Q', xControl: 3, yControl: -10, x: 9, y: 0
+        },
+        accent: 'dash'
     },
     n: {
         type: 'L', x: 30, y: 0
@@ -92,8 +119,32 @@ const greggsMapping = {
     e: {
         type: 'A', x: 0, y: -5
     },
+    é: {
+        type: 'X', character: {
+            type: 'A', x: 0, y: -5
+        },
+        accent: 'dot'
+    },
+    ē: {
+        type: 'X', character: {
+            type: 'A', x: 0, y: -5
+        },
+        accent: 'dash'
+    },
     a: {
         type: 'A', x: 0, y: -10
+    },
+    á: {
+        type: 'X', character: {
+            type: 'A', x: 0, y: -10
+        },
+        accent: 'dot'
+    },
+    ā: {
+        type: 'X', character: {
+            type: 'A', x: 0, y: -10
+        },
+        accent: 'dash'
     }
 };
 
@@ -120,9 +171,13 @@ document.addEventListener("keydown", (event) => {
     userInput.push(' ');
   }
 
+  // Handle consonants and special characters
+  if (event.shiftKey && event.key.length === 1) {
+    keyIdentifier = `Shift+${event.key.toUpperCase()}`; // Handle shifted keys
+  }
+
   // Handle vowels with conditional cycling
   if (vowelCycle[keyIdentifier]) {
-    userInput.push(keyIdentifier);
     console.log('Vowel character entered: ' + keyIdentifier)
     const currentText = outputDiv.textContent;
     const lastChar = currentText.slice(currentText.length-1);
@@ -134,106 +189,89 @@ document.addEventListener("keydown", (event) => {
       if (cycle.indexOf(lastChar) != 2) {
         const nextIndex = cycle.indexOf(lastChar) + 1;
         outputDiv.textContent = currentText.slice(0, currentText.length-1) + cycle[nextIndex];
+        userInput.pop();
+        userInput.push(cycle[nextIndex])
         console.log('Character: ' + cycle[nextIndex])
       }
     } else {
       // Add the unaccented vowel if it's not already present
+      userInput.push(vowelCycle[keyIdentifier][0]);
       outputDiv.textContent += vowelCycle[keyIdentifier][0];
     }
+  } else {
+    if (mapping[keyIdentifier]){
+        const greggsChar = mapping[keyIdentifier];
+        userInput.push(greggsChar);
+        outputDiv.textContent += greggsChar;
+    }
   }
-
-  // Handle consonants and special characters
-  if (event.shiftKey && event.key.length === 1) {
-    keyIdentifier = `Shift+${event.key.toUpperCase()}`; // Handle shifted keys
-  }
-
-  const greggsChar = mapping[keyIdentifier];
-  if (greggsChar) {
-    userInput.push(greggsChar);
-    outputDiv.textContent += greggsChar;
-  }
-
   handleIterations();
 });
 
 function handleIterations() {
     updateSVGFirstIteration();
-    updateSVGSecondIteration();
 }
 
-function updateSVGSecondIteration() {
-    console.log('User input: ' + userInput);
-    let pathData = `M ${baseX} ${baseY}`; // Start the path
-    let x = baseX, y = baseY; // Track the current position
-    let furthestX = baseX;
-
-    for (const char of userInput) {
-      const mapping = greggsMapping[char];
-      if (char === ' '){
-        x = furthestX + 10;
-        y = baseY;
-        pathData += ` M ${x} ${y}`
-        continue
-      } else if (!mapping) continue; // Skip unsupported characters
-
-      if (mapping.type === 'Q') {
-        pathData += ` Q ${x + mapping.xControl} ${y + mapping.yControl} ${x + mapping.x} ${y + mapping.y}`;
-        x += mapping.x;
-        y += mapping.y;
+function handleMapping(state, mapping){
+    console.log(`BEFORE: pathdata: ${state.pathData}, x: ${state.x}, y: ${state.y}, mapping: ${mapping}`);
+    if (mapping.type === 'Q') {
+        state.pathData += ` Q ${state.x + mapping.xControl} ${state.y + mapping.yControl} ${state.x + mapping.x} ${state.y + mapping.y}`;
+        state.x += mapping.x;
+        state.y += mapping.y;
       } else if (mapping.type === 'L') {
-        pathData += ` L ${x + mapping.x} ${y + mapping.y}`;
-        x += mapping.x;
-        y += mapping.y;
+        state.pathData += ` L ${state.x + mapping.x} ${state.y + mapping.y}`;
+        state.x += mapping.x;
+        state.y += mapping.y;
       } else if (mapping.type === 'A') {
-        pathData += ` A 1 1 0 0 0 ${x + mapping.x} ${y + mapping.y} A 1 1 0 0 0 ${x} ${y}`;
-        x += mapping.x;
-        y += mapping.y;
-      }
+        state.pathData += ` A 1 1 0 0 0 ${state.x + mapping.x} ${state.y + mapping.y} A 1 1 0 0 0 ${state.x} ${state.y}`;
+        // state.x += mapping.x;
+        // state.y += mapping.y;
+      } else if (mapping.type === 'X') {
+        console.log(JSON.stringify(mapping));
+        let tempX = state.x;
+        let tempY = state.y;
+        handleMapping(state, mapping.character);
+        if(mapping.accent == 'dot'){
+            tempX += accents.dot.move.x;
+            tempY += accents.dot.move.y;
+            state.pathData += ` M ${tempX} ${tempY}`
+            state.pathData += ` A 1 1 0 0 0 ${tempX + accents.dot.x} ${tempY + accents.dot.y} A 1 1 0 0 0 ${tempX} ${tempY}`; 
+        } else if(mapping.accent == 'dash'){
+            tempX += accents.dash.move.x;
+            tempY += accents.dash.move.y;
+            state.pathData += ` M ${tempX} ${tempY}`
+            state.pathData += ` L ${tempX + accents.dash.x} ${tempY + accents.dash.y}`;
+        }
 
-      if (mapping.x > 0){
-        furthestX = x;
-      }
+        state.pathData += ` M ${state.x} ${state.y}`;
     }
-
-    document.getElementById("greggsPathSecond").setAttribute("d", pathData);
+      console.log(`AFTER: pathdata: ${state.pathData}, x: ${state.x}, y: ${state.y}, mapping: ${mapping}`);
 }
-
-
-
 
 function updateSVGFirstIteration() {
     console.log('User input: ' + userInput);
-    let pathData = `M ${baseX} ${baseY}`; // Start the path
-    let x = baseX, y = baseY; // Track the current position
+    const state = { 
+        pathData: `M ${baseX} ${baseY}`, // Start the path
+        x: baseX, 
+        y: baseY 
+    };
     let furthestX = baseX;
 
     for (const char of userInput) {
       const mapping = greggsMapping[char];
       if (char === ' '){
-        x = furthestX + 10;
-        y = baseY;
-        pathData += ` M ${x} ${y}`
+        state.x = furthestX + 10;
+        state.y = baseY;
+        state.pathData += ` M ${x} ${y}`
         continue
       } else if (!mapping) continue; // Skip unsupported characters
 
-      if (mapping.type === 'Q') {
-        pathData += ` Q ${x + mapping.xControl} ${y + mapping.yControl} ${x + mapping.x} ${y + mapping.y}`;
-        x += mapping.x;
-        y += mapping.y;
-      } else if (mapping.type === 'L') {
-        pathData += ` L ${x + mapping.x} ${y + mapping.y}`;
-        x += mapping.x;
-        y += mapping.y;
-      } else if (mapping.type === 'A') {
-        pathData += ` A 1 1 0 0 0 ${x + mapping.x} ${y + mapping.y} A 1 1 0 0 0 ${x} ${y}`;
-        x += mapping.x;
-        y += mapping.y;
-      }
+      handleMapping(state, mapping);
 
       if (mapping.x > 0){
-        furthestX = x;
+        furthestX = state.x;
       }
     }
 
-    document.getElementById("greggsPathFirst").setAttribute("d", pathData);
+    document.getElementById("greggsPathFirst").setAttribute("d", state.pathData);
 }
